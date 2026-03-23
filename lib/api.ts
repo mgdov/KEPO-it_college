@@ -1,4 +1,5 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
+const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? ""
+const BASE_URL = RAW_BASE_URL.replace(/\/$/, "")
 const MOCK_MODE =
   process.env.NEXT_PUBLIC_MOCK_MODE === "true" || BASE_URL === ""
 
@@ -31,7 +32,12 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const normalizedPath =
+    BASE_URL.endsWith("/api") && path.startsWith("/api/")
+      ? path.replace(/^\/api/, "")
+      : path
+
+  const res = await fetch(`${BASE_URL}${normalizedPath}`, {
     credentials: "include",
     headers: {
       ...(options.body instanceof FormData

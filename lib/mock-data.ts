@@ -1,12 +1,3 @@
-/**
- * Mock data for demo/test mode.
- * Used when NEXT_PUBLIC_MOCK_MODE=true or when the backend is unreachable.
- *
- * Test credentials:
- *   student  / student123
- *   teacher  / teacher123
- *   admin    / admin123
- */
 
 import type {
   MeResponse,
@@ -21,7 +12,6 @@ import type {
   AuditLog,
 } from "@/lib/api"
 
-// ─── Users ────────────────────────────────────────────────────────────────────
 
 export const MOCK_USERS: Record<
   string,
@@ -60,7 +50,6 @@ export const MOCK_USERS: Record<
   },
 }
 
-// ─── Student profile ──────────────────────────────────────────────────────────
 
 export const MOCK_PROFILE: StudentProfile = {
   id: "u-student-1",
@@ -78,7 +67,6 @@ export const MOCK_PROFILE: StudentProfile = {
   },
 }
 
-// ─── Grades ───────────────────────────────────────────────────────────────────
 
 export const MOCK_GRADES: Grade[] = [
   {
@@ -124,7 +112,6 @@ export const MOCK_GRADES: Grade[] = [
   },
 ]
 
-// ─── Schedule ─────────────────────────────────────────────────────────────────
 
 const today = new Date()
 function dayOffset(d: number, h: number, m = 0) {
@@ -195,7 +182,6 @@ export const MOCK_SCHEDULE: ScheduleLesson[] = [
   },
 ]
 
-// ─── Lesson detail ────────────────────────────────────────────────────────────
 
 export const MOCK_LESSON_DETAIL: Record<string, LessonDetail> = {
   "l-1": {
@@ -292,7 +278,6 @@ export const MOCK_LESSON_DETAIL: Record<string, LessonDetail> = {
   },
 }
 
-// ─── Admin ────────────────────────────────────────────────────────────────────
 
 export const MOCK_ADMIN_USERS: AdminUser[] = [
   {
