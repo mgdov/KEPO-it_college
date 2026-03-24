@@ -158,15 +158,79 @@ export const auth = {
 // ─── Student ─────────────────────────────────────────────────────────────────
 
 export const student = {
-  profile: () => request<StudentProfile>("/api/student/profile"),
+  profile: async () => {
+    const raw = await request<unknown>("/api/student/profile")
 
-  grades: () => request<Grade[]>("/api/student/grades"),
+    // Legacy/new backend compatibility:
+    // - old frontend shape: { id, fullName, email, login, student: { group } }
+    // - current backend shape: { id, fullName, email, group, averageGrade, ... }
+    if (raw && typeof raw === "object") {
+      const obj = raw as Record<string, unknown>
+      if (obj.student && typeof obj.student === "object") {
+        return obj as StudentProfile
+      }
+
+      const group = obj.group as
+        | { id: string | number; name: string; course: number; specialty: string }
+        | undefined
+
+      return {
+        id: String(obj.id ?? ""),
+        fullName: String(obj.fullName ?? ""),
+        email: String(obj.email ?? ""),
+        login: String(obj.login ?? ""),
+        student: {
+          id: String(obj.id ?? ""),
+          group: {
+            id: String(group?.id ?? ""),
+            name: String(group?.name ?? ""),
+            course: Number(group?.course ?? 0),
+            specialty: String(group?.specialty ?? ""),
+          },
+        },
+      } as StudentProfile
+    }
+
+    return raw as StudentProfile
+  },
+
+  grades: async () => {
+    const raw = await request<unknown>("/api/student/grades")
+
+    // Expected frontend shape: Grade[]
+    // Backend may return either Grade[] directly or { grades: [...], summary: {...} }
+    if (Array.isArray(raw)) {
+      return raw as Grade[]
+    }
+
+    if (raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).grades)) {
+      const source = (raw as { grades: Array<Record<string, unknown>> }).grades
+      return source.map((g) => {
+        // New backend grade shape: { id, subject: {name}, value, gradeType, createdAt }
+        const subject = (g.subject as Record<string, unknown> | undefined) ?? {}
+        const value = Number(g.value ?? 0)
+        return {
+          lessonId: String(g.id ?? ""),
+          lessonTitle: String(g.gradeType ?? "Оценка"),
+          subjectName: String(subject.name ?? "Предмет"),
+          score: value,
+          maxScore: 5,
+          gradedAt: String(g.createdAt ?? new Date().toISOString()),
+        } satisfies Grade
+      })
+    }
+
+    return []
+  },
 
   schedule: (from: string, to: string) =>
     request<ScheduleLesson[]>(`/api/student/schedule?from=${from}&to=${to}`),
 
   lesson: (lessonId: string) =>
     request<LessonDetail>(`/api/student/lessons/${lessonId}`),
+
+  viewMaterialUrl: (lessonId: string, materialId: string) =>
+    apiUrl(`/api/student/lessons/${lessonId}/materials/${materialId}/view`),
 
   downloadMaterial: (lessonId: string, materialId: string) =>
     request<Blob>(
@@ -223,10 +287,17 @@ export const programming = {
 export const games = {
   types: () => request<GameType[]>("/api/games/types"),
 
-  createSession: (lessonId: string, gameType: string) =>
-    request<GameSession>("/api/games/sessions", {
+  info: (lessonId: string) =>
+    request<{
+      gameType: string
+      gameName?: string
+      activeSession: GameSession | null
+      sessions: GameSession[]
+    }>(`/api/student/lessons/${lessonId}/game/info`),
+
+  createSession: (lessonId: string, _gameType?: string) =>
+    request<GameSession>(`/api/student/lessons/${lessonId}/game/solo/start`, {
       method: "POST",
-      body: JSON.stringify({ lessonId, gameType }),
     }),
 
   session: (sessionId: string) =>
@@ -255,17 +326,16 @@ export const games = {
     }),
 
   lessonSessions: (lessonId: string) =>
-    request<GameSession[]>(`/api/games/lessons/${lessonId}/sessions`),
+    request<GameSession[]>(`/api/student/lessons/${lessonId}/game/sessions`),
 
   // PvP
-  createPvp: (lessonId: string, gameType: string) =>
-    request<GameSession>("/api/games/pvp/create", {
+  createPvp: (lessonId: string, _gameType?: string) =>
+    request<GameSession>(`/api/student/lessons/${lessonId}/game/pvp/create`, {
       method: "POST",
-      body: JSON.stringify({ lessonId, gameType }),
     }),
 
   openPvp: (lessonId: string) =>
-    request<GameSession[]>(`/api/games/pvp/lessons/${lessonId}/open`),
+    request<GameSession[]>(`/api/student/lessons/${lessonId}/game/pvp/open`),
 
   joinPvp: (sessionId: string) =>
     request<GameSession>(`/api/games/pvp/${sessionId}/join`, {

@@ -5,7 +5,7 @@ import { student, apiUrl } from "@/lib/api"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
-import { Clock, FileText, Lock, ChevronLeft, Download } from "lucide-react"
+import { Clock, FileText, Lock, ChevronLeft, Eye } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -182,13 +182,14 @@ function MaterialsSection({
                   </div>
                 </div>
                 <a
-                  href={apiUrl(`/api/student/lessons/${lessonId}/materials/${m.id}/download`)}
-                  download
+                  href={apiUrl(`/api/student/lessons/${lessonId}/materials/${m.id}/view`)}
+                  target="_blank"
+                  rel="noreferrer"
                   className="flex-shrink-0"
                 >
                   <Button variant="outline" size="sm" className="flex items-center gap-1.5">
-                    <Download className="h-3.5 w-3.5" />
-                    Скачать
+                    <Eye className="h-3.5 w-3.5" />
+                    Открыть
                   </Button>
                 </a>
               </div>
