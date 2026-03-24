@@ -3,6 +3,15 @@ const BASE_URL = RAW_BASE_URL.replace(/\/$/, "")
 const MOCK_MODE =
   process.env.NEXT_PUBLIC_MOCK_MODE === "true" || BASE_URL === ""
 
+/** Absolute URL to the backend API (for download links etc.) */
+export function apiUrl(path: string): string {
+  const normalizedPath =
+    BASE_URL.endsWith("/api") && path.startsWith("/api/")
+      ? path.replace(/^\/api/, "")
+      : path
+  return `${BASE_URL}${normalizedPath}`
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -59,9 +68,39 @@ async function request<T>(
 
   const contentType = res.headers.get("content-type")
   if (contentType?.includes("application/json")) {
-    return res.json() as Promise<T>
+    const json = await res.json()
+    return unwrapEnvelope(json) as T
   }
   return res.blob() as unknown as Promise<T>
+}
+
+/**
+ * Backend wraps every JSON response in an envelope:
+ *   { success: true, <dataKey>: <payload> }
+ * This helper strips the envelope and returns the inner payload.
+ * — If there is exactly one data key besides "success" and "message",
+ *   return its value.
+ * — If there are several data keys (e.g. {success, group, subjects}),
+ *   return the object without "success".
+ * — If the envelope has only {success, message} (mutation ack),
+ *   return {message}.
+ * — audit-logs returns {data, meta} without "success" — passed through.
+ */
+function unwrapEnvelope(json: Record<string, unknown>): unknown {
+  if (typeof json !== "object" || json === null || !("success" in json)) {
+    return json                       // not an envelope — pass through
+  }
+  const dataKeys = Object.keys(json).filter(
+    (k) => k !== "success" && k !== "message"
+  )
+  if (dataKeys.length === 1) return json[dataKeys[0]]
+  if (dataKeys.length > 1) {
+    const out: Record<string, unknown> = {}
+    for (const k of dataKeys) out[k] = json[k]
+    return out
+  }
+  // only {success, message?} left → return {message} for mutation acks
+  return { message: json.message ?? "OK" }
 }
 
 // ─── Mock delay helper ────────────────────────────────────────────────────────

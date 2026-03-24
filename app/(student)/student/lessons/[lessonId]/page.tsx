@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { student } from "@/lib/api"
+import { student, apiUrl } from "@/lib/api"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
@@ -182,7 +182,7 @@ function MaterialsSection({
                   </div>
                 </div>
                 <a
-                  href={`/api/student/lessons/${lessonId}/materials/${m.id}/download`}
+                  href={apiUrl(`/api/student/lessons/${lessonId}/materials/${m.id}/download`)}
                   download
                   className="flex-shrink-0"
                 >
