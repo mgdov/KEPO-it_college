@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen,
-  CalendarDays, ClipboardList, BarChart2, FileText, Shield
+  CalendarDays, ClipboardList, BarChart2, FileText, Shield, Sparkles, Database
 } from "lucide-react"
 import { DashboardShell } from "@/components/dashboard/shell"
 import type { NavItem } from "@/components/dashboard/sidebar"
@@ -17,6 +17,8 @@ const navItems: NavItem[] = [
   { href: "/admin/subjects", label: "Предметы", icon: BookOpen },
   { href: "/admin/lessons", label: "Занятия", icon: CalendarDays },
   { href: "/admin/assessments", label: "Тесты", icon: ClipboardList },
+  { href: "/admin/generate", label: "Генерация AI", icon: Sparkles },
+  { href: "/admin/pools", label: "Пулы заданий", icon: Database },
   { href: "/admin/results", label: "Результаты", icon: BarChart2 },
   { href: "/admin/audit", label: "Журнал аудита", icon: FileText },
 ]

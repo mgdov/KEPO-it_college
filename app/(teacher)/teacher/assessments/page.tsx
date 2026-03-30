@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { admin, type AssessmentDetail } from "@/lib/api"
 import {
-  Plus, Trash2, Eye, CheckCircle, XCircle, ChevronDown, ClipboardList, Import
+  Plus, Trash2, Eye, CheckCircle, XCircle, ChevronDown, ClipboardList, Import, Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/collapsible"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { AiGenerateQuestionsDialog } from "@/components/admin/ai-generate-questions-dialog"
 
 export default function TeacherAssessmentsPage() {
   const qc = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
 
   const { data: assessments = [], isLoading } = useQuery({
     queryKey: ["admin", "assessments"],
@@ -160,11 +162,30 @@ export default function TeacherAssessmentsPage() {
                 </CardContent>
               </Card>
 
+              {detail && (
+                <AiGenerateQuestionsDialog
+                  open={aiOpen}
+                  onOpenChange={setAiOpen}
+                  assessmentId={detail.id}
+                  onApplied={() => {
+                    qc.invalidateQueries({ queryKey: ["admin", "assessment", selectedId] })
+                    qc.invalidateQueries({ queryKey: ["admin", "assessments"] })
+                  }}
+                />
+              )}
+
               {/* Questions */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                   <CardTitle className="text-base">Вопросы ({detail.questions?.length ?? 0})</CardTitle>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAiOpen(true)}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" /> AI
+                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm">
@@ -274,13 +295,16 @@ function InfoPill({ label, value }: { label: string; value: string }) {
   )
 }
 
+const ASSESSMENT_LESSON_TYPES = ["EXAM", "LAB_MATH", "LAB_QUIZ", "CREDIT"]
+
 function CreateAssessmentForm({
   lessons,
   onSuccess,
 }: {
-  lessons: { id: string; subject: { name: string }; group: { name: string } }[]
+  lessons: { id: string; lessonType: string; subject: { name: string }; group: { name: string } }[]
   onSuccess: (id: string) => void
 }) {
+  const filteredLessons = lessons.filter((l) => ASSESSMENT_LESSON_TYPES.includes(l.lessonType))
   const [lessonId, setLessonId] = useState("")
   const [title, setTitle] = useState("")
   const [type, setType] = useState("QUIZ")
@@ -311,7 +335,7 @@ function CreateAssessmentForm({
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">Выберите занятие</option>
-          {lessons.map((l) => (
+          {filteredLessons.map((l) => (
             <option key={l.id} value={l.id}>
               {l.subject.name} — {l.group.name}
             </option>
