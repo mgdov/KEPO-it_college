@@ -6,7 +6,7 @@ import { admin, type AdminLesson } from "@/lib/api"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import {
-  Plus, Trash2, Upload, FileText, Lock, Unlock, Search
+  Plus, Trash2, Upload, FileText, Lock, Unlock, Search, Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { LessonTypeBadge } from "@/app/(student)/student/page"
 import { toast } from "sonner"
+import { AiGenerateProgrammingTaskDialog } from "@/components/admin/ai-generate-programming-task-dialog"
 
 const LESSON_TYPES = [
   { value: "LECTURE", label: "Лекция" },
@@ -52,6 +53,7 @@ export default function TeacherLessonsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [unlockOpen, setUnlockOpen] = useState<string | null>(null)
   const [materialOpen, setMaterialOpen] = useState<string | null>(null)
+  const [aiTaskOpen, setAiTaskOpen] = useState<string | null>(null)
 
   const { data: lessons = [], isLoading } = useQuery({
     queryKey: ["admin", "lessons"],
@@ -158,6 +160,19 @@ export default function TeacherLessonsPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* AI Programming Task */}
+                    {lesson.lessonType === "LAB_CODE" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1"
+                        onClick={() => setAiTaskOpen(lesson.id)}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        AI
+                      </Button>
+                    )}
+
                     {/* Materials */}
                     <Dialog open={materialOpen === lesson.id} onOpenChange={(o) => setMaterialOpen(o ? lesson.id : null)}>
                       <DialogTrigger asChild>
@@ -209,6 +224,18 @@ export default function TeacherLessonsPage() {
                   </div>
                 </div>
               </CardContent>
+
+              {aiTaskOpen === lesson.id && (
+                <AiGenerateProgrammingTaskDialog
+                  open
+                  onOpenChange={(o) => setAiTaskOpen(o ? lesson.id : null)}
+                  lessonId={lesson.id}
+                  onApplied={() => {
+                    qc.invalidateQueries({ queryKey: ["admin", "lessons"] })
+                    qc.invalidateQueries({ queryKey: ["admin", "programming-tasks"] })
+                  }}
+                />
+              )}
             </Card>
           ))}
         </div>

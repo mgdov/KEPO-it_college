@@ -3,6 +3,15 @@ const BASE_URL = RAW_BASE_URL.replace(/\/$/, "")
 const MOCK_MODE =
   process.env.NEXT_PUBLIC_MOCK_MODE === "true" || BASE_URL === ""
 
+/** Absolute URL to the backend API (for download links etc.) */
+export function apiUrl(path: string): string {
+  const normalizedPath =
+    BASE_URL.endsWith("/api") && path.startsWith("/api/")
+      ? path.replace(/^\/api/, "")
+      : path
+  return `${BASE_URL}${normalizedPath}`
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -52,16 +61,53 @@ async function request<T>(
     let message = res.statusText
     try {
       const json = await res.json()
-      message = json.message ?? json.error ?? message
+      if (json.errors && typeof json.errors === "object") {
+        const details = Object.entries(json.errors)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join("; ")
+        message = json.message ? `${json.message} (${details})` : details
+      } else {
+        message = json.message ?? json.error ?? message
+      }
     } catch { }
     throw new ApiError(res.status, message)
   }
 
   const contentType = res.headers.get("content-type")
   if (contentType?.includes("application/json")) {
-    return res.json() as Promise<T>
+    const json = await res.json()
+    return unwrapEnvelope(json) as T
   }
   return res.blob() as unknown as Promise<T>
+}
+
+/**
+ * Backend wraps every JSON response in an envelope:
+ *   { success: true, <dataKey>: <payload> }
+ * This helper strips the envelope and returns the inner payload.
+ * — If there is exactly one data key besides "success" and "message",
+ *   return its value.
+ * — If there are several data keys (e.g. {success, group, subjects}),
+ *   return the object without "success".
+ * — If the envelope has only {success, message} (mutation ack),
+ *   return {message}.
+ * — audit-logs returns {data, meta} without "success" — passed through.
+ */
+function unwrapEnvelope(json: Record<string, unknown>): unknown {
+  if (typeof json !== "object" || json === null || !("success" in json)) {
+    return json                       // not an envelope — pass through
+  }
+  const dataKeys = Object.keys(json).filter(
+    (k) => k !== "success" && k !== "message"
+  )
+  if (dataKeys.length === 1) return json[dataKeys[0]]
+  if (dataKeys.length > 1) {
+    const out: Record<string, unknown> = {}
+    for (const k of dataKeys) out[k] = json[k]
+    return out
+  }
+  // only {success, message?} left → return {message} for mutation acks
+  return { message: json.message ?? "OK" }
 }
 
 // ─── Mock delay helper ────────────────────────────────────────────────────────
@@ -119,15 +165,79 @@ export const auth = {
 // ─── Student ─────────────────────────────────────────────────────────────────
 
 export const student = {
-  profile: () => request<StudentProfile>("/api/student/profile"),
+  profile: async () => {
+    const raw = await request<unknown>("/api/student/profile")
 
-  grades: () => request<Grade[]>("/api/student/grades"),
+    // Legacy/new backend compatibility:
+    // - old frontend shape: { id, fullName, email, login, student: { group } }
+    // - current backend shape: { id, fullName, email, group, averageGrade, ... }
+    if (raw && typeof raw === "object") {
+      const obj = raw as Record<string, unknown>
+      if (obj.student && typeof obj.student === "object") {
+        return obj as StudentProfile
+      }
+
+      const group = obj.group as
+        | { id: string | number; name: string; course: number; specialty: string }
+        | undefined
+
+      return {
+        id: String(obj.id ?? ""),
+        fullName: String(obj.fullName ?? ""),
+        email: String(obj.email ?? ""),
+        login: String(obj.login ?? ""),
+        student: {
+          id: String(obj.id ?? ""),
+          group: {
+            id: String(group?.id ?? ""),
+            name: String(group?.name ?? ""),
+            course: Number(group?.course ?? 0),
+            specialty: String(group?.specialty ?? ""),
+          },
+        },
+      } as StudentProfile
+    }
+
+    return raw as StudentProfile
+  },
+
+  grades: async () => {
+    const raw = await request<unknown>("/api/student/grades")
+
+    // Expected frontend shape: Grade[]
+    // Backend may return either Grade[] directly or { grades: [...], summary: {...} }
+    if (Array.isArray(raw)) {
+      return raw as Grade[]
+    }
+
+    if (raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>).grades)) {
+      const source = (raw as { grades: Array<Record<string, unknown>> }).grades
+      return source.map((g) => {
+        // New backend grade shape: { id, subject: {name}, value, gradeType, createdAt }
+        const subject = (g.subject as Record<string, unknown> | undefined) ?? {}
+        const value = Number(g.value ?? 0)
+        return {
+          lessonId: String(g.id ?? ""),
+          lessonTitle: String(g.gradeType ?? "Оценка"),
+          subjectName: String(subject.name ?? "Предмет"),
+          score: value,
+          maxScore: 5,
+          gradedAt: String(g.createdAt ?? new Date().toISOString()),
+        } satisfies Grade
+      })
+    }
+
+    return []
+  },
 
   schedule: (from: string, to: string) =>
     request<ScheduleLesson[]>(`/api/student/schedule?from=${from}&to=${to}`),
 
   lesson: (lessonId: string) =>
     request<LessonDetail>(`/api/student/lessons/${lessonId}`),
+
+  viewMaterialUrl: (lessonId: string, materialId: string) =>
+    apiUrl(`/api/student/lessons/${lessonId}/materials/${materialId}/view`),
 
   downloadMaterial: (lessonId: string, materialId: string) =>
     request<Blob>(
@@ -149,6 +259,35 @@ export const student = {
     request<AttemptResult>(`/api/student/attempts/${attemptId}/submit`, {
       method: "POST",
       body: JSON.stringify({ answers }),
+    }),
+
+  // ─── Pool variants ─────────────────────────────────────────
+  getPoolVariant: (lessonId: string) =>
+    request<{
+      success: boolean
+      assignment: {
+        id: number
+        poolId: number
+        variantIndex: number
+        content: unknown
+        topic: string
+        contentType: string
+        assignedAt: string
+      }
+    }>(`/api/student/lessons/${lessonId}/pool-variant`),
+
+  assignPoolVariant: (lessonId: string) =>
+    request<{
+      success: boolean
+      assignment: {
+        id: number
+        variantIndex: number
+        content: unknown
+        assignedAt: string
+      }
+    }>(`/api/student/lessons/${lessonId}/pool-variant`, {
+      method: "POST",
+      body: JSON.stringify({}),
     }),
 }
 
@@ -184,10 +323,17 @@ export const programming = {
 export const games = {
   types: () => request<GameType[]>("/api/games/types"),
 
-  createSession: (lessonId: string, gameType: string) =>
-    request<GameSession>("/api/games/sessions", {
+  info: (lessonId: string) =>
+    request<{
+      gameType: string
+      gameName?: string
+      activeSession: GameSession | null
+      sessions: GameSession[]
+    }>(`/api/student/lessons/${lessonId}/game/info`),
+
+  createSession: (lessonId: string, _gameType?: string) =>
+    request<GameSession>(`/api/student/lessons/${lessonId}/game/solo/start`, {
       method: "POST",
-      body: JSON.stringify({ lessonId, gameType }),
     }),
 
   session: (sessionId: string) =>
@@ -216,17 +362,16 @@ export const games = {
     }),
 
   lessonSessions: (lessonId: string) =>
-    request<GameSession[]>(`/api/games/lessons/${lessonId}/sessions`),
+    request<GameSession[]>(`/api/student/lessons/${lessonId}/game/sessions`),
 
   // PvP
-  createPvp: (lessonId: string, gameType: string) =>
-    request<GameSession>("/api/games/pvp/create", {
+  createPvp: (lessonId: string, _gameType?: string) =>
+    request<GameSession>(`/api/student/lessons/${lessonId}/game/pvp/create`, {
       method: "POST",
-      body: JSON.stringify({ lessonId, gameType }),
     }),
 
   openPvp: (lessonId: string) =>
-    request<GameSession[]>(`/api/games/pvp/lessons/${lessonId}/open`),
+    request<GameSession[]>(`/api/student/lessons/${lessonId}/game/pvp/open`),
 
   joinPvp: (sessionId: string) =>
     request<GameSession>(`/api/games/pvp/${sessionId}/join`, {
@@ -329,8 +474,8 @@ export const admin = {
   lesson: (id: string) => request<AdminLesson>(`/api/admin/lessons/${id}`),
 
   createLesson: (data: {
-    groupId: string
-    subjectId: string
+    groupId: string | number
+    subjectId: string | number
     lessonType: string
     gameType?: string
     startsAt: string
@@ -338,7 +483,11 @@ export const admin = {
   }) =>
     request<AdminLesson>("/api/admin/lessons", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        groupId: Number(data.groupId),
+        subjectId: Number(data.subjectId),
+      }),
     }),
 
   updateLesson: (id: string, data: object) =>
@@ -467,6 +616,181 @@ export const admin = {
   },
 }
 
+// ─── Admin AI ────────────────────────────────────────────────────────────────
+
+export const adminAi = {
+  generateMathQuestions: (data: {
+    topic: string
+    count: number
+    difficulty: "easy" | "medium" | "hard"
+    language?: "ru"
+  }) =>
+    request<AiQuestionsDraft>("/api/admin/ai/generate/math-questions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  generateQuizQuestions: (data: {
+    topic: string
+    count: number
+    difficulty: "easy" | "medium" | "hard"
+    language?: "ru"
+  }) =>
+    request<AiQuestionsDraft>("/api/admin/ai/generate/quiz-questions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  generateProgrammingTask: (data: {
+    topic: string
+    difficulty: "easy" | "medium" | "hard"
+    allowedLanguages?: string[]
+    language?: "ru"
+  }) =>
+    request<AiProgrammingTaskDraft>("/api/admin/ai/generate/programming-task", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  applyQuestions: (data: {
+    assessmentId: number
+    draft: AiQuestionsDraft
+  }) =>
+    request<{ assessmentId: number; importedCount: number }>("/api/admin/ai/apply/questions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  applyProgrammingTask: (data: {
+    lessonId: number
+    draft: AiProgrammingTaskDraft
+  }) =>
+    request<{ lessonId: number; taskId: number }>("/api/admin/ai/apply/programming-task", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface AiQuestionsDraft {
+  topic: string
+  questions: {
+    text: string
+    options: { text: string; isCorrect: boolean }[]
+  }[]
+}
+
+export interface AiProgrammingTaskDraft {
+  title: string
+  statement: string
+  allowedLanguages: string[]
+  timeLimitMs: number
+  memoryLimitKb: number
+  testCases: { input: string; expected: string }[]
+}
+
+// ─── Admin Pools ─────────────────────────────────────────────────────────────
+
+export interface TaskPool {
+  id: number
+  subjectId: number
+  topic: string
+  contentType: "QUIZ" | "MATH" | "PROGRAMMING"
+  difficulty: string
+  status: "PENDING" | "GENERATING" | "READY" | "FAILED"
+  targetCount: number
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+  subject: { id: number; name: string }
+  _count: { variants: number; assignments?: number }
+}
+
+export interface TaskPoolVariant {
+  id: number
+  poolId: number
+  variantIndex: number
+  contentJson: unknown
+  createdAt: string
+}
+
+export interface TaskPoolDetail extends TaskPool {
+  variants: TaskPoolVariant[]
+}
+
+export interface LessonPoolLink {
+  id: number
+  lessonId: number
+  poolId: number
+  linkedByUserId: number | null
+  createdAt: string
+  lesson?: {
+    id: number
+    date: string
+    lessonType: string
+    group: { id: number; name: string }
+    subject?: { id: number; name: string }
+  }
+  pool?: TaskPool
+}
+
+export const adminPools = {
+  create: (data: {
+    subjectId: number
+    topic: string
+    contentType: "QUIZ" | "MATH" | "PROGRAMMING"
+    difficulty?: string
+    targetCount?: number
+  }) =>
+    request<TaskPool>("/api/admin/pools", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  list: (params?: {
+    subjectId?: number
+    contentType?: string
+    status?: string
+    page?: number
+    pageSize?: number
+  }) => {
+    const q = new URLSearchParams(
+      Object.entries(params ?? {})
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, String(v)])
+    ).toString()
+    return request<{ data: TaskPool[]; meta: { page: number; pageSize: number; total: number; totalPages: number } }>(
+      `/api/admin/pools${q ? `?${q}` : ""}`
+    )
+  },
+
+  get: (id: number) =>
+    request<TaskPoolDetail>(`/api/admin/pools/${id}`),
+
+  generate: (id: number) =>
+    request<{ poolId: number; status: string }>(`/api/admin/pools/${id}/generate`, {
+      method: "POST",
+    }),
+
+  delete: (id: number) =>
+    request<{ message: string }>(`/api/admin/pools/${id}`, {
+      method: "DELETE",
+    }),
+
+  getLessonLinks: (id: number) =>
+    request<LessonPoolLink[]>(`/api/admin/pools/${id}/lessons`),
+
+  linkLesson: (poolId: number, lessonId: number) =>
+    request<LessonPoolLink>(`/api/admin/pools/${poolId}/link-lesson`, {
+      method: "POST",
+      body: JSON.stringify({ lessonId }),
+    }),
+
+  unlinkLesson: (poolId: number, lessonId: number) =>
+    request<{ message: string }>(`/api/admin/pools/${poolId}/unlink-lesson/${lessonId}`, {
+      method: "DELETE",
+    }),
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type UserRole = "PENDING" | "STUDENT" | "TEACHER" | "ADMIN"
@@ -507,7 +831,7 @@ export interface Grade {
 
 export interface ScheduleLesson {
   id: string
-  lessonType: "LECTURE" | "LAB_TASK" | "LAB_GAME" | "LAB_CODE" | "EXAM"
+  lessonType: "LECTURE" | "LAB_QUIZ" | "LAB_MATH" | "LAB_PROGRAMMING" | "LAB_GAME" | "EXAM" | "CREDIT"
   gameType?: string
   startsAt: string
   endsAt: string

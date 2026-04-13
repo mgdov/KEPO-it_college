@@ -1,11 +1,12 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
-import { student } from "@/lib/api"
+import { useState } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { student, apiUrl } from "@/lib/api"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
-import { Clock, FileText, Lock, ChevronLeft, Download } from "lucide-react"
+import { Clock, FileText, Lock, ChevronLeft, Eye, Loader2, ClipboardList, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -120,17 +121,18 @@ export default function LessonPage() {
             <GameModule lessonId={params.lessonId} gameType={lesson.gameType} />
           )}
 
-          {/* LAB CODE */}
-          {lesson.lessonType === "LAB_CODE" && (
+          {/* LAB CODE (programming) */}
+          {lesson.lessonType === "LAB_PROGRAMMING" && (
             <CodeModule lessonId={params.lessonId} />
           )}
 
-          {/* LAB TASK / EXAM – assessment */}
-          {(lesson.lessonType === "LAB_TASK" || lesson.lessonType === "EXAM") && (
+          {/* LAB QUIZ / LAB MATH / EXAM / CREDIT – assessment + pool variant */}
+          {(lesson.lessonType === "LAB_QUIZ" || lesson.lessonType === "LAB_MATH" || lesson.lessonType === "EXAM" || lesson.lessonType === "CREDIT") && (
             <>
               {lesson.materials.length > 0 && (
                 <MaterialsSection lessonId={params.lessonId} materials={lesson.materials} />
               )}
+              <PoolVariantSection lessonId={params.lessonId} />
               {lesson.assessment && (
                 <AssessmentModule lessonId={params.lessonId} assessment={lesson.assessment} />
               )}
@@ -182,13 +184,14 @@ function MaterialsSection({
                   </div>
                 </div>
                 <a
-                  href={`/api/student/lessons/${lessonId}/materials/${m.id}/download`}
-                  download
+                  href={apiUrl(`/api/student/lessons/${lessonId}/materials/${m.id}/view`)}
+                  target="_blank"
+                  rel="noreferrer"
                   className="flex-shrink-0"
                 >
                   <Button variant="outline" size="sm" className="flex items-center gap-1.5">
-                    <Download className="h-3.5 w-3.5" />
-                    Скачать
+                    <Eye className="h-3.5 w-3.5" />
+                    Открыть
                   </Button>
                 </a>
               </div>
@@ -197,5 +200,162 @@ function MaterialsSection({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+// ─── Pool Variant Section ────────────────────────────────────────────────────
+
+function PoolVariantSection({ lessonId }: { lessonId: string }) {
+  const qc = useQueryClient()
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["student", "pool-variant", lessonId],
+    queryFn: () => student.getPoolVariant(lessonId),
+    retry: false,
+  })
+
+  const assignMutation = useMutation({
+    mutationFn: () => student.assignPoolVariant(lessonId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["student", "pool-variant", lessonId] })
+    },
+  })
+
+  const hasVariant = data?.success && data.assignment
+  const is404 = (error as { status?: number })?.status === 404
+
+  // Loading
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // No pool linked — silently skip (assessment module will handle the lesson)
+  if (is404 && !assignMutation.data) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <ClipboardList className="h-10 w-10 text-primary mx-auto" />
+          <div>
+            <p className="font-semibold text-foreground">Индивидуальный вариант</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Нажмите кнопку, чтобы получить свой вариант задания
+            </p>
+          </div>
+          {assignMutation.error && (
+            <p className="text-sm text-destructive">
+              {(assignMutation.error as Error).message || "Не удалось получить вариант"}
+            </p>
+          )}
+          <Button
+            onClick={() => assignMutation.mutate()}
+            disabled={assignMutation.isPending}
+            size="lg"
+          >
+            {assignMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <ClipboardList className="h-4 w-4 mr-2" />
+            )}
+            Получить задание
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show assigned variant
+  const assignment = assignMutation.data?.assignment ?? data?.assignment
+  if (!assignment) return null
+
+  const content = assignment.content as Record<string, unknown>
+  const contentType = ("contentType" in assignment ? assignment.contentType : null) as string | null
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            Ваш вариант #{assignment.variantIndex + 1}
+          </CardTitle>
+          {"topic" in assignment && assignment.topic && (
+            <Badge variant="secondary">{assignment.topic as string}</Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* QUIZ / MATH content */}
+        {Array.isArray(content?.questions) && (
+          <VariantQuestions questions={content.questions as QuestionItem[]} />
+        )}
+
+        {/* PROGRAMMING content */}
+        {typeof content?.title === "string" && typeof content?.statement === "string" && (
+          <div className="space-y-3">
+            <h3 className="font-medium text-foreground">{content.title as string}</h3>
+            <div className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-3">
+              {content.statement as string}
+            </div>
+            {Array.isArray(content?.allowedLanguages) && (
+              <p className="text-xs text-muted-foreground">
+                Языки: {(content.allowedLanguages as string[]).join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Fallback: raw JSON */}
+        {!Array.isArray(content?.questions) && typeof content?.title !== "string" && (
+          <pre className="text-xs overflow-auto max-h-60 bg-muted rounded p-3 whitespace-pre-wrap">
+            {JSON.stringify(content, null, 2)}
+          </pre>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface QuestionItem {
+  text: string
+  options: { text: string; isCorrect?: boolean }[]
+}
+
+function VariantQuestions({ questions }: { questions: QuestionItem[] }) {
+  const [answers, setAnswers] = useState<Record<number, number>>({})
+
+  return (
+    <div className="space-y-4">
+      {questions.map((q, qi) => (
+        <div key={qi} className="border rounded-lg p-3 space-y-2">
+          <p className="font-medium text-sm">
+            {qi + 1}. {q.text}
+          </p>
+          <div className="grid gap-1.5">
+            {q.options.map((o, oi) => (
+              <button
+                key={oi}
+                onClick={() => setAnswers((prev) => ({ ...prev, [qi]: oi }))}
+                className={`text-left text-sm rounded px-3 py-2 border transition-colors ${
+                  answers[qi] === oi
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-input bg-background hover:bg-accent"
+                }`}
+              >
+                {o.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="text-xs text-muted-foreground text-center pt-2">
+        Выберите ответы. Оценивание выполняется преподавателем.
+      </p>
+    </div>
   )
 }

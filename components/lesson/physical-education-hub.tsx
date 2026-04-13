@@ -153,10 +153,10 @@ function writeRating(rows: PhysicalRatingRow[]) {
 }
 
 export function PhysicalEducationHub({
-  lessonId = "physical-education",
+  lessonId,
   title = "Физкультура: интерактивный модуль",
 }: {
-  lessonId?: string
+  lessonId: string
   title?: string
 }) {
   const qc = useQueryClient()
