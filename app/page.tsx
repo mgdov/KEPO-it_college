@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation"
+import { Welcome } from "./welcome/Welcome"
 
 export default function Home() {
-  redirect("/login")
+  return <Welcome />
 }

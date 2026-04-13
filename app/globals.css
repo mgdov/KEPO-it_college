@@ -131,10 +131,128 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-sans tracking-tight;
   }
+}
+
+/* ── Welcome landing page theme tokens ─────────────── */
+:root {
+  --wlc-bg: linear-gradient(135deg, #f8faff 0%, #f0f4ff 55%, #eef2ff 100%);
+  --wlc-grid-color: rgba(99, 102, 241, 0.05);
+  --wlc-text-primary: #0f172a;
+  --wlc-text-secondary: rgba(71, 85, 105, 0.85);
+  --wlc-text-muted: rgba(100, 116, 139, 0.7);
+  --wlc-card-bg: rgba(255, 255, 255, 0.85);
+  --wlc-card-border: 1px solid rgba(99, 102, 241, 0.10);
+  --wlc-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+  --wlc-badge-bg: rgba(99, 102, 241, 0.07);
+  --wlc-badge-border: rgba(99, 102, 241, 0.22);
+  --wlc-badge-color: #4f46e5;
+  --wlc-h1-from: #1e1b4b;
+  --wlc-h1-via: #6366f1;
+  --wlc-h1-to: #0891b2;
+  --wlc-stat-from: #4f46e5;
+  --wlc-stat-to: #0891b2;
+  --wlc-cta-shadow: 0 0 28px rgba(99, 102, 241, 0.30), 0 4px 20px rgba(99, 102, 241, 0.15);
+  --wlc-ghost-border: rgba(99, 102, 241, 0.30);
+  --wlc-ghost-color: #4f46e5;
+  --wlc-ghost-bg: rgba(99, 102, 241, 0.04);
+  --wlc-mockup-bg: rgba(255, 255, 255, 0.60);
+  --wlc-mockup-border: rgba(99, 102, 241, 0.14);
+  --wlc-mockup-shadow: 0 0 60px rgba(99, 102, 241, 0.08), 0 20px 60px rgba(0, 0, 0, 0.10);
+  --wlc-cta-section-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.07) 0%, rgba(139, 92, 246, 0.05) 50%, rgba(6, 182, 212, 0.07) 100%);
+  --wlc-cta-section-border: rgba(99, 102, 241, 0.15);
+  --wlc-cta-section-shadow: 0 8px 40px rgba(99, 102, 241, 0.08);
+  --wlc-cta-glow: 0 0 32px rgba(99, 102, 241, 0.30);
+  --wlc-footer-border: rgba(99, 102, 241, 0.10);
+  --wlc-footer-text: rgba(100, 116, 139, 0.50);
+  /* code window */
+  --wlc-code-bg: #f6f8fa;
+  --wlc-code-chrome: #e8ecf0;
+  --wlc-code-chrome-border: rgba(0, 0, 0, 0.07);
+  --wlc-code-tab: rgba(71, 85, 105, 0.50);
+  --wlc-code-kw: #cf222e;
+  --wlc-code-fn: #6639ba;
+  --wlc-code-text: #24292f;
+  --wlc-code-num: #0550ae;
+  --wlc-code-comment: #6e7781;
+  --wlc-code-border: rgba(99, 102, 241, 0.15);
+  /* hero illustration */
+  --wlc-hero-card-bg: rgba(255, 255, 255, 0.90);
+  --wlc-hero-card-border: 1px solid rgba(99, 102, 241, 0.12);
+  --wlc-hero-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --wlc-hero-label: rgba(71, 85, 105, 0.70);
+  --wlc-hero-sub: rgba(71, 85, 105, 0.55);
+  --wlc-hero-track: rgba(0, 0, 0, 0.07);
+  --wlc-hero-name: #0f172a;
+  --wlc-hero-online-border: #ffffff;
+  --wlc-hero-connect-color: #4f46e5;
+  --wlc-hero-lesson-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(6, 182, 212, 0.05));
+  --wlc-hero-lesson-border: rgba(99, 102, 241, 0.15);
+}
+
+.dark {
+  --wlc-bg: linear-gradient(135deg, #030712 0%, #090f1d 55%, #0d1b2a 100%);
+  --wlc-grid-color: rgba(0, 245, 255, 0.022);
+  --wlc-text-primary: #ffffff;
+  --wlc-text-secondary: rgba(148, 163, 184, 0.82);
+  --wlc-text-muted: rgba(148, 163, 184, 0.60);
+  --wlc-card-bg: rgba(255, 255, 255, 0.025);
+  --wlc-card-border: 1px solid rgba(99, 102, 241, 0.12);
+  --wlc-card-shadow: none;
+  --wlc-badge-bg: rgba(99, 102, 241, 0.08);
+  --wlc-badge-border: rgba(99, 102, 241, 0.28);
+  --wlc-badge-color: #a5b4fc;
+  --wlc-h1-from: #ffffff;
+  --wlc-h1-via: #c4b5fd;
+  --wlc-h1-to: #67e8f9;
+  --wlc-stat-from: #a5b4fc;
+  --wlc-stat-to: #67e8f9;
+  --wlc-cta-shadow: 0 0 36px rgba(99, 102, 241, 0.45), 0 4px 20px rgba(0, 0, 0, 0.35);
+  --wlc-ghost-border: rgba(99, 102, 241, 0.32);
+  --wlc-ghost-color: rgba(199, 210, 254, 0.88);
+  --wlc-ghost-bg: transparent;
+  --wlc-mockup-bg: rgba(255, 255, 255, 0.02);
+  --wlc-mockup-border: rgba(99, 102, 241, 0.18);
+  --wlc-mockup-shadow: 0 0 120px rgba(99, 102, 241, 0.10), 0 0 40px rgba(6, 182, 212, 0.06), 0 50px 100px rgba(0, 0, 0, 0.50);
+  --wlc-cta-section-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 50%, rgba(6, 182, 212, 0.10) 100%);
+  --wlc-cta-section-border: rgba(99, 102, 241, 0.20);
+  --wlc-cta-section-shadow: none;
+  --wlc-cta-glow: 0 0 48px rgba(99, 102, 241, 0.50);
+  --wlc-footer-border: rgba(255, 255, 255, 0.05);
+  --wlc-footer-text: rgba(148, 163, 184, 0.35);
+  /* code window */
+  --wlc-code-bg: #0d1117;
+  --wlc-code-chrome: #161b22;
+  --wlc-code-chrome-border: rgba(255, 255, 255, 0.05);
+  --wlc-code-tab: rgba(148, 163, 184, 0.45);
+  --wlc-code-kw: #ff7b72;
+  --wlc-code-fn: #d2a8ff;
+  --wlc-code-text: #c9d1d9;
+  --wlc-code-num: #79c0ff;
+  --wlc-code-comment: #3fb950;
+  --wlc-code-border: rgba(99, 102, 241, 0.25);
+  /* hero illustration */
+  --wlc-hero-card-bg: rgba(255, 255, 255, 0.03);
+  --wlc-hero-card-border: 1px solid rgba(99, 102, 241, 0.15);
+  --wlc-hero-card-shadow: none;
+  --wlc-hero-label: rgba(148, 163, 184, 0.75);
+  --wlc-hero-sub: rgba(148, 163, 184, 0.55);
+  --wlc-hero-track: rgba(255, 255, 255, 0.06);
+  --wlc-hero-name: #ffffff;
+  --wlc-hero-online-border: #0a0f1e;
+  --wlc-hero-connect-color: #a5b4fc;
+  --wlc-hero-lesson-bg: linear-gradient(135deg, rgba(99, 102, 241, 0.10), rgba(6, 182, 212, 0.08));
+  --wlc-hero-lesson-border: rgba(99, 102, 241, 0.20);
 }
