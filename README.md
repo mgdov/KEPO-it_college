@@ -1,97 +1,68 @@
-# KEPO-it_college
-<<<<<<< HEAD
+# КЭПО — платформа дистанционного обучения
 
-## Backend configuration
+Frontend образовательной платформы с личными кабинетами студентов, преподавателей и администраторов. Проект объединяет учебные материалы, расписание и интерактивные занятия.
 
-Set API URL in `.env.local`:
+[Демо](https://kepo-it-college.vercel.app/) · [Профиль разработчика](https://github.com/mgdov)
 
-```env
-NEXT_PUBLIC_API_URL=http://176.32.32.120:3011/api
-NEXT_PUBLIC_MOCK_MODE=false
-```
+## Основные сценарии
 
-`NEXT_PUBLIC_API_URL` supports both formats:
+- Регистрация и согласование доступа к личному кабинету.
+- Работа с расписанием и учебными материалами.
+- Лабораторные занятия, тесты и экзамены.
+- Интерактивные игровые модули, баллы и рейтинги.
+- Интерфейсы для разных ролей пользователей.
 
-- `http://host:port`
-- `http://host:port/api`
-
-The API client normalizes paths to avoid duplicated `/api` in requests.
-=======
-# КЭПО — Колледж электронного и программного образования  
-Онлайн-платформа дистанционного обучения с личными кабинетами и интерактивными занятиями
-
-<p align="center">
-  <img src="https://via.placeholder.com/1200x400/0033A0/FFFFFF?text=КЭПО+—+Личный+кабинет+студента" alt="КЭПО Banner" width="100%" />
-  <br/>
-  <em>Современная, удобная и строгая в стиле dstu.ru</em>
-</p>
-
-<p align="center">
-  <a href="https://kepo-it-college.vercel.app">
-    <img src="https://img.shields.io/badge/Открыть_демо-0066CC?style=for-the-badge&logo=vercel&logoColor=white" alt="Demo">
-  </a>
-  &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 15">
-  <img src="https://img.shields.io/badge/TypeScript-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/shadcn/ui-000000?style=for-the-badge&logo=shadcn&logoColor=white" alt="shadcn/ui">
-</p>
-
-## О проекте
-
-**КЭПО** — это полноценная платформа дистанционного обучения для студентов колледжа.  
-Студенты получают доступ к личному кабинету только после загрузки документов и одобрения администратором. Внутри — расписание, материалы лекций, интерактивные лабораторные занятия, тесты, экзамены и необычные модули физкультуры в игровом формате.
-
-### Основные возможности
-
-- 🛡️ Регистрация с загрузкой документов (паспорт, СНИЛС и др.)
-- 👮 Три роли: Студент · Преподаватель · Администратор
-- 📅 Умное расписание с блокировкой прошедших занятий
-- 📚 Лекции — просмотр PDF/Word материалов
-- 🎮 Лабораторные занятия:
-  - Онлайн-компилятор (программирование)
-  - Задачи с выбором ответа (математика и др.)
-  - **Физкультура в играх**:
-    - Шахматы
-    - Шашки
-    - Словесные игры
-    - «Кто хочет стать миллионером»
-    - Физминутки с анимациями
-    - PvP и игра против компьютера + рейтинговая система
-- 🏆 Система баллов и рейтинга по физкультуре
-- 📊 Автоматический процент успеваемости
-- 📝 Зачёты и экзамены в формате тестов
-- 🔐 Жёсткий контроль доступа (занятие закрывается после окончания)
+Это репозиторий frontend. Для сценариев с реальными данными требуется отдельно запущенный backend и соответствующие права доступа.
 
 ## Технологии
 
-| Категория           | Технологии                                      |
-|---------------------|--------------------------------------------------|
-| Frontend            | Next.js 15 (App Router), TypeScript, Tailwind CSS |
-| UI-компоненты       | shadcn/ui, Lucide Icons, framer-motion           |
-| Формы и валидация   | React Hook Form + Zod                            |
-| Запросы к API       | TanStack Query (React Query)                     |
-| Редактор кода       | Monaco Editor                                    |
-| Шахматы             | chess.js + react-chessboard                      |
-| Авторизация         | httpOnly cookie session                          |
-| Деплой              | Vercel                                           |
+TypeScript · Next.js 16 · React 19 · Tailwind CSS 4 · shadcn/ui / Radix UI · TanStack Query · React Hook Form · Zod · Framer Motion. Версии зависимостей зафиксированы в package.json и lock-файлах.
 
-## Структура проекта
+## Локальный запуск
+
+Потребуются Node.js, совместимый с Next.js 16 (20.9+), npm и доступ к backend для интеграционных сценариев.
+
+```bash
+git clone https://github.com/mgdov/KEPO-it_college.git
+cd KEPO-it_college
+npm ci
+```
+
+Создайте .env.local в корне проекта:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3011/api
+NEXT_PUBLIC_MOCK_MODE=false
+```
+
+Замените адрес на URL своего backend. API-клиент поддерживает базовый URL как с суффиксом /api, так и без него, нормализуя пути запросов. Переменные NEXT_PUBLIC_* доступны браузеру: не храните в них секреты.
+
+```bash
+npm run dev
+```
+
+Откройте http://localhost:3000. Для полноценного прохождения сценариев нужен работающий backend; наличие запущенного frontend не подтверждает доступность API.
+
+## Команды
+
+| Команда | Назначение |
+| --- | --- |
+| npm run dev | Сервер разработки |
+| npm run build | Production-сборка |
+| npm run start | Запуск собранного приложения |
+| npm run lint | Команда ESLint из package.json |
+
+## Структура
 
 ```text
-app/
-├── (auth)/             # страницы авторизации
-├── (student)/          # дашборд студента
-│   ├── courses/        # Мои курсы
-│   ├── physical-education/  # Игры по физкультуре
-│   └── lessons/[id]/
-├── (teacher)/          # дашборд преподавателя
-│   ├── groups/
-│   └── groups/[id]/schedule/
-├── (admin)/            # админ-панель
-components/
-├── ui/                 # shadcn компоненты
-├── layout/             # Sidebar, Header, Footer
-lib/
-├── api.ts              # typed API client
-└── types/              # типы из API
->>>>>>> refs/remotes/origin/main
+app/          Маршруты и страницы Next.js
+components/   Компоненты интерфейса
+hooks/        React-хуки
+lib/          Клиент API и вспомогательная логика
+public/       Статические файлы
+styles/       Стили
+```
+
+## Проверка перед демонстрацией
+
+Проверьте доступность backend, авторизацию нужной роли и основные пользовательские сценарии. Команды приведены по package.json; доступность демо и успешность сборки зависят от окружения и проверяются отдельно.
